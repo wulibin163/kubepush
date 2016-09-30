@@ -9,20 +9,20 @@ import (
 	dockertypes "github.com/docker/engine-api/types"
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/kubelet/dockertools"
-	"k8s.io/kubernetes/pkg/util/workqueue"
 	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
+	"k8s.io/kubernetes/pkg/util/workqueue"
 
 	"k8s.io/client-go/1.4/dynamic"
 	"k8s.io/client-go/1.4/kubernetes"
+	"k8s.io/client-go/1.4/pkg/api"
 	"k8s.io/client-go/1.4/pkg/api/unversioned"
 	"k8s.io/client-go/1.4/pkg/api/v1"
-	"k8s.io/client-go/1.4/pkg/api"
 	"k8s.io/client-go/1.4/pkg/labels"
 	"k8s.io/client-go/1.4/pkg/runtime"
 	"k8s.io/client-go/1.4/pkg/util/json"
 	"k8s.io/client-go/1.4/pkg/util/wait"
-	"k8s.io/client-go/1.4/tools/cache"
 	"k8s.io/client-go/1.4/pkg/watch"
+	"k8s.io/client-go/1.4/tools/cache"
 )
 
 const defaultLabelKey = "kubepush.alpha.kubernetes.io/nodename"
@@ -35,8 +35,8 @@ type PushController struct {
 	dockerClient  dockerclient.DockerInterface
 
 	pushController *cache.Controller
-	pushStore cache.Store
-	queue *workqueue.Type
+	pushStore      cache.Store
+	queue          *workqueue.Type
 
 	syncHandler func(rsKey string) error
 
@@ -52,6 +52,7 @@ func NewPushController(clientset *kubernetes.Clientset, dynamicClient *dynamic.C
 
 		watchNamespace: namespace,
 		watchNode:      node,
+		queue:          workqueue.NewNamed("pushagent"),
 	}
 
 	opts := &api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{defaultLabelKey: pc.watchNode}))}
@@ -68,7 +69,7 @@ func NewPushController(clientset *kubernetes.Clientset, dynamicClient *dynamic.C
 		&runtime.Unstructured{},
 		resyncPeriod,
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    pc.enqueuePush,
+			AddFunc: pc.enqueuePush,
 			UpdateFunc: func(old, cur interface{}) {
 				pc.enqueuePush(cur)
 			},
@@ -89,7 +90,6 @@ func (pc *PushController) enqueuePush(obj interface{}) {
 	}
 	pc.queue.Add(key)
 }
-
 
 func (pc *PushController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
@@ -181,7 +181,11 @@ func (pc *PushController) syncPush(key string) error {
 	}
 
 	if push.Status.Phase == pushapi.PushSucceeded || push.Status.Phase == pushapi.PushFailed {
-		return  nil
+		return nil
+	}
+
+	if push.Labels[defaultLabelKey] != pc.watchNode {
+		return nil
 	}
 
 	pushErr := pc.commitAndPush(push)

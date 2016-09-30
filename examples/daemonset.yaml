@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: kubepush
-          image: index.caicloud.io/caicloud/kubepush:1.5
+          image: index.caicloud.io/caicloud/kubepush:latest
           imagePullPolicy: Always
           env:
             - name: POD_NAME

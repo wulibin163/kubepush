@@ -12,8 +12,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 
-	"k8s.io/client-go/1.4/kubernetes"
 	"k8s.io/client-go/1.4/dynamic"
+	"k8s.io/client-go/1.4/kubernetes"
 	"k8s.io/client-go/1.4/pkg/api/unversioned"
 	"k8s.io/client-go/1.4/pkg/api/v1"
 	"k8s.io/client-go/1.4/pkg/util/wait"
@@ -23,14 +23,14 @@ import (
 var (
 	flags = pflag.NewFlagSet("", pflag.ExitOnError)
 
-	resourceGroup   = flags.String("resource-group", "caicloud.io", `The Group of resource this agent will list and watch`)
+	resourceGroup   = flags.String("resource-group", "k8s.io", `The Group of resource this agent will list and watch`)
 	resourceKind    = flags.String("resource-kind", "push", `The Kine of resource this agent will list and watch`)
 	resourceVersion = flag.String("resource-version", "v1", `The Version of resource this agent will list and watch`)
-	watchNamespace = flags.String("watch-namespace", v1.NamespaceAll,
+	watchNamespace  = flags.String("watch-namespace", v1.NamespaceAll,
 		`Namespace to watch for Commit. Default is to watch all namespaces`)
 	resyncPeriod = flags.Duration("sync-period", 0,
 		`Relist and confirm cloud resources this often.`)
-	concurrentPushyncs = flags.Int("concurrent-push-syncs", 5,
+	concurrentPushSyncs = flags.Int("concurrent-push-syncs", 5,
 		`the number of push controllers that are allowed to sync concurrently.
 		Larger number = more responsive push management, but more CPU (and network) load"`)
 	// dockerEndpoint is the path to the docker endpoint to communicate with.
@@ -76,7 +76,7 @@ func main() {
 
 	go handleSigterm(pc)
 
-	pc.Run(*concurrentPushyncs, wait.NeverStop)
+	pc.Run(*concurrentPushSyncs, wait.NeverStop)
 
 }
 
