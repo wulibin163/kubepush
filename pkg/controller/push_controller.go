@@ -25,7 +25,11 @@ import (
 	"k8s.io/client-go/1.4/tools/cache"
 )
 
-const defaultLabelKey = "kubepush.alpha.kubernetes.io/nodename"
+const (
+	defaultLabelKey       = "kubepush.alpha.kubernetes.io/nodename"
+	usernameAnnotationKey = "kubepush.alpha.kubernetes.io/username"
+	passwordAnnotationKey = "kubepush.alpha.kubernetes.io/password"
+)
 
 var keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 
@@ -118,45 +122,6 @@ func (pc *PushController) worker() {
 	}
 }
 
-/*
-func (pc *PushController) syncPushs() error {
-	options := &v1.ListOptions{LabelSelector: labels.FormatLabels(map[string]string{defaultLabelKey: pc.watchNode})}
-
-	objs, err := pc.dynamicClient.Resource(&unversioned.APIResource{Name: "pushs", Namespaced: true, Kind: "push"}, pc.watchNamespace).List(options)
-	if err != nil {
-		return err
-	}
-
-	list := objs.(*runtime.UnstructuredList)
-	for _, item := range list.Items {
-		data, err := item.MarshalJSON()
-		if err != nil {
-			glog.Error(err)
-			continue
-		}
-
-		push := &api.Push{}
-		if err := json.Unmarshal(data, push); err != nil {
-			glog.Error(err)
-			continue
-		}
-
-		if push.Status.Phase == api.PushSucceeded || push.Status.Phase == api.PushFailed {
-			continue
-		}
-
-		if push.Labels[defaultLabelKey] != pc.watchNode {
-			glog.Errorf("kakkaka")
-			continue
-		}
-
-		pc.syncPush(push)
-	}
-
-	return nil
-}
-*/
-
 func (pc *PushController) syncPush(key string) error {
 	obj, exists, err := pc.pushStore.GetByKey(key)
 	if !exists {
@@ -241,9 +206,19 @@ func (pc *PushController) commitAndPush(push *pushapi.Push) error {
 			return err
 		}
 
+		var username, password string
+		if push.Annotations != nil {
+			username = push.Annotations[usernameAnnotationKey]
+			password = push.Annotations[passwordAnnotationKey]
+		}
+
 		dockerPusher := dockerclient.NewDockerPusher(pc.dockerClient, 0, 0)
 
-		return dockerPusher.Push(push.Spec.Image, pushSecrets)
+		if username != "" && password != "" {
+			return dockerPusher.Push(push.Spec.Image, username, password)
+		}
+
+		return dockerPusher.PushWithSecret(push.Spec.Image, pushSecrets)
 	}
 
 	return fmt.Errorf("Unable find container: %v on node: %v", push.Spec.ContainerName, pc.watchNode)

@@ -42,6 +42,11 @@ var (
 		 Default: 2m0s")`)
 )
 
+func init() {
+	flag.Set("logtostderr", "true")
+	flag.Parse()
+}
+
 func main() {
 	flags.AddGoFlagSet(flag.CommandLine)
 	flags.Parse(os.Args)

@@ -22,7 +22,8 @@ import (
 
 // DockerPusher is an abstract interface for testability.  It abstracts image push operations.
 type DockerPusher interface {
-	Push(image string, secrets []v1.Secret) error
+	PushWithSecret(image string, secrets []v1.Secret) error
+	Push(image, username, password string) error
 	IsImagePresent(image string) (bool, error)
 }
 
@@ -53,7 +54,20 @@ func NewDockerPusher(client DockerInterface, qps float32, burst int) DockerPushe
 	}
 }
 
-func (p dockerPusher) Push(image string, secrets []v1.Secret) error {
+func (p dockerPusher) Push(image, username, password string) error {
+	image, err := applyDefaultImageTag(image)
+	if err != nil {
+		return err
+	}
+	pushErr := p.client.PushImage(image, dockertypes.AuthConfig{
+		Username: username,
+		Password: password,
+		Auth:     username,
+	}, dockertypes.ImagePushOptions{})
+	return filterHTTPError(pushErr, image)
+}
+
+func (p dockerPusher) PushWithSecret(image string, secrets []v1.Secret) error {
 	// If the image contains no tag or digest, a default tag should be applied.
 	image, err := applyDefaultImageTag(image)
 	if err != nil {
@@ -108,9 +122,16 @@ func (p dockerPusher) Push(image string, secrets []v1.Secret) error {
 	return utilerrors.NewAggregate(pushErrs)
 }
 
-func (p throttledDockerPusher) Push(image string, secrets []v1.Secret) error {
+func (p throttledDockerPusher) PushWithSecret(image string, secrets []v1.Secret) error {
 	if p.limiter.TryAccept() {
-		return p.pusher.Push(image, secrets)
+		return p.pusher.PushWithSecret(image, secrets)
+	}
+	return fmt.Errorf("push QPS exceeded.")
+}
+
+func (p throttledDockerPusher) Push(image, username, password string) error {
+	if p.limiter.TryAccept() {
+		return p.pusher.Push(image, username, password)
 	}
 	return fmt.Errorf("push QPS exceeded.")
 }
