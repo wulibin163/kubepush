@@ -1,0 +1,7 @@
+metadata:
+  name: push.k8s.io
+apiVersion: extensions/v1beta1
+kind: ThirdPartyResource
+description: "Allow user to commit and push a container to image hub"
+versions:
+- name: v1

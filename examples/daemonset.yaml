@@ -1,0 +1,33 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    app: kubepush
+  name: kubepush
+  namespace: kube-system
+spec:
+  template:
+    metadata:
+      labels:
+        app: kubepush
+    spec:
+      containers:
+        - name: kubepush
+          image: index.caicloud.io/caicloud/kubepush:latest
+          imagePullPolicy: Always
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: run
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: run
+          hostPath:
+              path: /var/run/docker.sock
