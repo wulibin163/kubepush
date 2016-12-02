@@ -1,7 +1,7 @@
 # kubepush
 
-Kubepush is actually a controller deploy as daemonset, it list and watch Push resources(a third party resource),
-which claims commit a container as image and push it into registry.
+Kubepush is actually a controller deployed as daemonset; it lists and watches `Push` resources (a third party resource),
+which commits a container as image and push it into registry.
 
 ### How to use
 
